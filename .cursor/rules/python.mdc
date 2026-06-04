@@ -1,0 +1,37 @@
+---
+description: Python FastAPI backend rules for API and testing
+globs:
+  - "app/**/*.py"
+  - "tests/**/*.py"
+alwaysApply: false
+---
+
+General rules:
+- Prefer simple, readable, maintainable code.
+- Do not add unnecessary abstractions or libraries.
+- Do not hardcode secrets, credentials, URLs, or tokens.
+- Use type hints where reasonable.
+- Use environment variables for configuration.
+- When changing behavior, update or add tests.
+- Add comments to document functions, classes and important code. 
+- Document code in README.md
+
+FastAPI rules:
+- Keep route handlers thin.
+- Put business logic in service module.
+- Use clear HTTP status codes.
+- Raise HTTPException for API errors.
+- Add /health for process health.
+- Add /ready for app and dependency readiness.
+
+Testing rules:
+- Use pytest.
+- Add tests for every new endpoint.
+- Test both successful and failing cases.
+- Do not rely on production environment variables in tests.
+
+Logging and errors:
+- Use structured, meaningful logs.
+- Do not swallow exceptions silently.
+- Do not log secrets or sensitive values.
+- Return user-friendly API errors but keep internal details in logs.

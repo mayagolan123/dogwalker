@@ -1,0 +1,16 @@
+---
+description: Docker image rules
+globs:
+  - "Dockerfile"
+  - ".dockerignore"
+alwaysApply: false
+---
+
+docker rules:
+- Keep image size as minimal as possible.
+- Enhance image layering caching capabilities to speed up build time.
+- Only use trusted sources for base image and dependencies.
+- Only use fixed versions for base images and dependencies.
+- Use .dockerignore to ignore files not needed in the image. 
+- Avoid running app as root user. 
+

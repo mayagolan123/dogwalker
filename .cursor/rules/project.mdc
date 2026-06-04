@@ -1,0 +1,14 @@
+---
+description: General project rules
+alwaysApply: true
+---
+
+General rules:
+- Always keep secrets out of Git.
+- Do not commit to git without approval. 
+
+Application rules:
+- Applicaton is containerized. 
+- Application should be stateless. 
+- Use environment variables for configuration.
+- Prefer simple, maintainable code.

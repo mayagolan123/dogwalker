@@ -1,0 +1,126 @@
+{
+  "affenpinscher": {
+    "description": "A small terrier-like toy breed from Germany, known for a wiry coat and confident, curious personality.",
+    "info_url": "https://en.wikipedia.org/wiki/Affenpinscher"
+  },
+  "akita": {
+    "description": "A large, powerful spitz breed from Japan, loyal and reserved with strangers, originally bred for guarding and hunting.",
+    "info_url": "https://en.wikipedia.org/wiki/Akita_(dog)"
+  },
+  "beagle": {
+    "description": "A small scent hound with a keen nose and friendly temperament, popular as a family companion and hunting dog.",
+    "info_url": "https://en.wikipedia.org/wiki/Beagle"
+  },
+  "boxer": {
+    "description": "A muscular, playful working breed from Germany, energetic and affectionate with family, often used as a guardian.",
+    "info_url": "https://en.wikipedia.org/wiki/Boxer_(dog)"
+  },
+  "bulldog": {
+    "description": "A medium-sized breed with a distinctive wrinkled face and sturdy build, calm and courageous despite a tough look.",
+    "info_url": "https://en.wikipedia.org/wiki/Bulldog"
+  },
+  "chihuahua": {
+    "description": "The world's smallest dog breed, named after the Mexican state of Chihuahua, alert and devoted to its owner.",
+    "info_url": "https://en.wikipedia.org/wiki/Chihuahua_(dog)"
+  },
+  "corgi": {
+    "description": "Short-legged herding dogs from Wales, intelligent and bold, famous for their fox-like expression and sturdy frame.",
+    "info_url": "https://en.wikipedia.org/wiki/Welsh_Corgi"
+  },
+  "dachshund": {
+    "description": "A long-bodied, short-legged hound bred in Germany to hunt badgers, brave and lively in a compact package.",
+    "info_url": "https://en.wikipedia.org/wiki/Dachshund"
+  },
+  "dalmatian": {
+    "description": "A distinctive spotted breed associated with firehouses and carriage work, energetic and outgoing.",
+    "info_url": "https://en.wikipedia.org/wiki/Dalmatian_(dog)"
+  },
+  "doberman": {
+    "description": "A sleek, athletic guard dog from Germany, highly trainable, loyal, and protective of its family.",
+    "info_url": "https://en.wikipedia.org/wiki/Dobermann"
+  },
+  "germanshepherd": {
+    "description": "A versatile herding and working breed valued for intelligence, courage, and success in police and service roles.",
+    "info_url": "https://en.wikipedia.org/wiki/German_Shepherd"
+  },
+  "greyhound": {
+    "description": "One of the fastest dog breeds, built for sprinting with a gentle, quiet temperament at home.",
+    "info_url": "https://en.wikipedia.org/wiki/Greyhound"
+  },
+  "husky": {
+    "description": "Arctic sled dogs with thick coats and high endurance, friendly and vocal, bred to work in cold climates.",
+    "info_url": "https://en.wikipedia.org/wiki/Siberian_Husky"
+  },
+  "labrador": {
+    "description": "America's most popular retriever: friendly, active, and eager to please, excellent with families and as a working dog.",
+    "info_url": "https://en.wikipedia.org/wiki/Labrador_Retriever"
+  },
+  "malamute": {
+    "description": "A powerful Arctic breed bred for heavy freighting, strong-willed, affectionate, and built for endurance.",
+    "info_url": "https://en.wikipedia.org/wiki/Alaskan_Malamute"
+  },
+  "maltese": {
+    "description": "An ancient toy breed with a flowing white coat, gentle and playful, long favored as a companion dog.",
+    "info_url": "https://en.wikipedia.org/wiki/Maltese_(dog)"
+  },
+  "mastiff": {
+    "description": "Massive guardian breeds with a calm, dignified nature, historically used to protect homes and estates.",
+    "info_url": "https://en.wikipedia.org/wiki/Mastiff"
+  },
+  "pomeranian": {
+    "description": "A tiny spitz with a fluffy coat and bold personality, descended from larger sled dogs in the Baltic region.",
+    "info_url": "https://en.wikipedia.org/wiki/Pomeranian_(dog)"
+  },
+  "poodle": {
+    "description": "Highly intelligent water retrievers available in standard, miniature, and toy sizes, prized for trainability.",
+    "info_url": "https://en.wikipedia.org/wiki/Poodle"
+  },
+  "pug": {
+    "description": "A compact companion with a wrinkled face and curled tail, charming and sociable, bred to be a lap dog.",
+    "info_url": "https://en.wikipedia.org/wiki/Pug"
+  },
+  "rottweiler": {
+    "description": "A robust German working breed used for herding and guarding, confident, calm, and deeply loyal.",
+    "info_url": "https://en.wikipedia.org/wiki/Rottweiler"
+  },
+  "samoyed": {
+    "description": "A smiling white spitz from Siberia, bred to herd reindeer and pull sleds, friendly and gentle.",
+    "info_url": "https://en.wikipedia.org/wiki/Samoyed_(dog)"
+  },
+  "shiba": {
+    "description": "A small Japanese spitz with a fox-like appearance, independent, alert, and one of the most popular breeds in Japan.",
+    "info_url": "https://en.wikipedia.org/wiki/Shiba_Inu"
+  },
+  "spaniel": {
+    "description": "Flushing and companion spaniels are lively, affectionate gun dogs with silky coats and eager temperaments.",
+    "info_url": "https://en.wikipedia.org/wiki/Spaniel"
+  },
+  "terrier": {
+    "description": "A diverse group of feisty hunting dogs bred to go to ground after vermin, bold and energetic.",
+    "info_url": "https://en.wikipedia.org/wiki/Terrier"
+  },
+  "retriever": {
+    "description": "Retrievers excel at fetching game on land and water; they are friendly, trainable, and popular family dogs.",
+    "info_url": "https://en.wikipedia.org/wiki/Retriever"
+  },
+  "collie": {
+    "description": "Herding dogs known for grace and intelligence, including the famous rough-coated Lassie type.",
+    "info_url": "https://en.wikipedia.org/wiki/Collie"
+  },
+  "hound": {
+    "description": "Hounds hunt by sight or scent; the group includes everything from speedy greyhounds to melodious basset types.",
+    "info_url": "https://en.wikipedia.org/wiki/Hound"
+  },
+  "setter": {
+    "description": "Elegant bird dogs that freeze on point before the hunter flushes game, energetic and affectionate.",
+    "info_url": "https://en.wikipedia.org/wiki/Setter"
+  },
+  "vizsla": {
+    "description": "A Hungarian pointer with a rust-colored coat, velcro-dog loyalty, and stamina in the field.",
+    "info_url": "https://en.wikipedia.org/wiki/Vizsla"
+  },
+  "weimaraner": {
+    "description": "The 'Gray Ghost' of Germany: a sleek sporting dog with speed, stamina, and strong attachment to its people.",
+    "info_url": "https://en.wikipedia.org/wiki/Weimaraner"
+  }
+}

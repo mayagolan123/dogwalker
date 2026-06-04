@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dog Breeds</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Dog Breeds</h1>
+      <p class="subtitle">Choose a breed to see a photo, a short description, and where to learn more.</p>
+    </header>
+
+    <form class="breed-form" method="get" action="/">
+      <label for="breed">Select a breed</label>
+      <div class="form-row">
+        <select id="breed" name="breed" required>
+          <option value="" disabled {% if not selected_breed %}selected{% endif %}>— Pick a breed —</option>
+          {% for slug in breeds %}
+          <option value="{{ slug }}" {% if selected_breed == slug %}selected{% endif %}>
+            {{ slug.replace('/', ' · ').replace('-', ' ').title() }}
+          </option>
+          {% endfor %}
+        </select>
+        <button type="submit">Show breed</button>
+      </div>
+    </form>
+
+    {% if detail %}
+    <article class="breed-card">
+      <h2>{{ detail.display_name }}</h2>
+      <figure>
+        <img src="{{ detail.image_url }}" alt="Photo of a {{ detail.display_name }}">
+      </figure>
+      <p class="description">{{ detail.description }}</p>
+      <p>
+        <a class="info-link" href="{{ detail.info_url }}" target="_blank" rel="noopener noreferrer">
+          More about the {{ detail.display_name }} →
+        </a>
+      </p>
+    </article>
+    {% elif selected_breed is none %}
+    <p class="hint">Select a breed from the list and click <strong>Show breed</strong>.</p>
+    {% endif %}
+  </main>
+</body>
+</html>
