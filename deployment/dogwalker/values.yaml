@@ -1,5 +1,5 @@
 # Default chart values. Per-environment overrides (including targetRevision)
-# live in the environments repository.
+# live in the environments/ git submodule.
 
 replicaCount: 2
 

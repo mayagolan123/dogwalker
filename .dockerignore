@@ -6,6 +6,7 @@ __pycache__/
 .cursor/
 tests/
 deployment/
+environments/
 compose.yaml
 pytest.ini
 README.md

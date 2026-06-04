@@ -13,6 +13,19 @@ A small FastAPI web app that lets you pick a dog breed from a list and view:
 
 ## Setup (local)
 
+Clone with submodules (includes environment values):
+
+```bash
+git clone --recurse-submodules https://github.com/mayagolan123/dogwalker.git
+cd dogwalker
+```
+
+If you already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
@@ -78,20 +91,20 @@ Tests mock the Dog CEO API so they do not need network access.
 
 The Helm chart lives in `deployment/dogwalker/`. It runs **2 replicas** by default (HA), with liveness (`/health`), readiness (`/ready`), resource requests/limits, and non-root pods (UID 1000, matching the Docker image).
 
-Per-environment overrides and **`targetRevision`** (which Git ref to deploy) live in the separate **[environments](../environments)** repository:
+Per-environment overrides and **`targetRevision`** (which Git ref to deploy) live in the **`environments/`** git submodule ([mayagolan123/environments](https://github.com/mayagolan123/environments)):
 
 | Environment directory | `targetRevision` | Git ref |
 |----------------------|------------------|---------|
-| `dogwalker/feature-add-this-feature/` | `feature/add-this-feature` | branch |
-| `dogwalker/feature-fix-this/` | `feature/fix-this` | branch |
-| `dogwalker/staging/` | `main` | branch |
-| `dogwalker/production/` | `v1.0.0` | tag on `main` |
+| `environments/dogwalker/feature-add-this-feature/` | `feature/add-this-feature` | branch |
+| `environments/dogwalker/feature-fix-this/` | `feature/fix-this` | branch |
+| `environments/dogwalker/staging/` | `main` | branch |
+| `environments/dogwalker/production/` | `v1.0.0` | tag on `main` |
 
 Install with an environment values file (set `targetRevision` on your Argo CD Application to match):
 
 ```bash
 helm upgrade --install dogwalker ./deployment/dogwalker \
-  -f ../environments/dogwalker/staging/values.yaml \
+  -f environments/dogwalker/staging/values.yaml \
   --set image.repository=your-registry/dogwalker
 ```
 
@@ -139,5 +152,6 @@ app/
   templates/index.html
   static/style.css
 deployment/dogwalker/  # Helm chart
+environments/        # git submodule (per-env values + targetRevision)
 tests/
 ```
