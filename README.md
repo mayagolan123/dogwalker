@@ -74,6 +74,60 @@ pytest
 
 Tests mock the Dog CEO API so they do not need network access.
 
+## Deploy (Kubernetes / Helm)
+
+The Helm chart lives in `deployment/dogwalker/`. It runs **2 replicas** by default (HA), with liveness (`/health`), readiness (`/ready`), resource requests/limits, and non-root pods (UID 1000, matching the Docker image).
+
+Per-environment overrides and **`targetRevision`** (which Git ref to deploy) live in the separate **[environments](../environments)** repository:
+
+| Environment directory | `targetRevision` | Git ref |
+|----------------------|------------------|---------|
+| `dogwalker/feature-add-this-feature/` | `feature/add-this-feature` | branch |
+| `dogwalker/feature-fix-this/` | `feature/fix-this` | branch |
+| `dogwalker/staging/` | `main` | branch |
+| `dogwalker/production/` | `v1.0.0` | tag on `main` |
+
+Install with an environment values file (set `targetRevision` on your Argo CD Application to match):
+
+```bash
+helm upgrade --install dogwalker ./deployment/dogwalker \
+  -f ../environments/dogwalker/staging/values.yaml \
+  --set image.repository=your-registry/dogwalker
+```
+
+Build and push your image, then install without the environments repo:
+
+```bash
+docker build -t your-registry/dogwalker:1.0.0 .
+docker push your-registry/dogwalker:1.0.0
+
+helm upgrade --install dogwalker ./deployment/dogwalker \
+  --set image.repository=your-registry/dogwalker \
+  --set image.tag=1.0.0
+```
+
+Access locally via port-forward:
+
+```bash
+kubectl port-forward svc/dogwalker-dogwalker 8000:8000
+```
+
+Optional ingress:
+
+```bash
+helm upgrade --install dogwalker ./deployment/dogwalker \
+  --set image.repository=your-registry/dogwalker \
+  --set image.tag=1.0.0 \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host=dogwalker.example.com
+```
+
+Validate the chart without installing:
+
+```bash
+helm template dogwalker ./deployment/dogwalker
+```
+
 ## Project layout
 
 ```
@@ -84,5 +138,6 @@ app/
   data/breeds_metadata.json
   templates/index.html
   static/style.css
+deployment/dogwalker/  # Helm chart
 tests/
 ```

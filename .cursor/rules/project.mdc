@@ -6,6 +6,7 @@ alwaysApply: true
 General rules:
 - Always keep secrets out of Git.
 - Do not commit to git without approval. 
+- for any .ignore files, ensure only relevant files are ignored. For example don't add statement to ignore .hello files if we don't have any .hello files in the repository.
 
 Application rules:
 - Applicaton is containerized. 

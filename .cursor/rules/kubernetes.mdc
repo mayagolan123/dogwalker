@@ -1,0 +1,16 @@
+---
+description: Kubernetes rules for app deployment
+globs:
+  - "/deployment"
+alwaysApply: false
+---
+
+Kubernetes rules:
+- Write kubernetes manifests as Helm chart.
+- Deploy production app with high availability features.
+- Deployment must contain redinessProbe, livenessProbe, resource requests and limits.
+- Run pods without root permissions.
+
+Helm rules:
+- Avoid repeating code, use _helpers.tpl for readability.
+- Don't use hard-coded variables. 

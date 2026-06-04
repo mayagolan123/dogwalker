@@ -5,6 +5,8 @@ __pycache__/
 .git/
 .cursor/
 tests/
+deployment/
+compose.yaml
+pytest.ini
+README.md
 .env
-.env.*
-*.md
