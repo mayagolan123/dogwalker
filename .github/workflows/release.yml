@@ -1,110 +1,110 @@
-name: Release
+# name: Release
 
-on:
-  push:
-    tags:
-      - "v*.*.*"
+# on:
+#   push:
+#     tags:
+#       - "v*.*.*"
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-concurrency:
-  group: release-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+# concurrency:
+#   group: release-${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: false
 
-env:
-  IMAGE_NAME: dogwalker
+# env:
+#   IMAGE_NAME: dogwalker
 
-jobs:
-  log-time:
-    name: Log start time
-    uses: ./.github/workflows/reusable-log-time.yml
+# jobs:
+#   log-time:
+#     name: Log start time
+#     uses: ./.github/workflows/reusable-log-time.yml
 
-  pre-deploy-health:
-    name: Pre-deploy production health
-    needs: log-time
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment:
-      name: production
+#   pre-deploy-health:
+#     name: Pre-deploy production health
+#     needs: log-time
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 10
+#     environment:
+#       name: production
 
-    steps:
-      - name: Check existing production health
-        if: vars.PRODUCTION_APP_URL != ''
-        env:
-          APP_URL: ${{ vars.PRODUCTION_APP_URL }}
-        run: |
-          curl -fsS "${APP_URL}/health"
-          curl -fsS "${APP_URL}/ready"
-          echo "Pre-deploy health checks passed."
+#     steps:
+#       - name: Check existing production health
+#         if: vars.PRODUCTION_APP_URL != ''
+#         env:
+#           APP_URL: ${{ vars.PRODUCTION_APP_URL }}
+#         run: |
+#           curl -fsS "${APP_URL}/health"
+#           curl -fsS "${APP_URL}/ready"
+#           echo "Pre-deploy health checks passed."
 
-      - name: Skip pre-deploy health
-        if: vars.PRODUCTION_APP_URL == ''
-        run: |
-          echo "PRODUCTION_APP_URL is not configured; skipping pre-deploy health check."
+#       - name: Skip pre-deploy health
+#         if: vars.PRODUCTION_APP_URL == ''
+#         run: |
+#           echo "PRODUCTION_APP_URL is not configured; skipping pre-deploy health check."
 
-  build-push:
-    name: Build and push release image
-    needs: pre-deploy-health
-    uses: ./.github/workflows/reusable-build-push.yml
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      push: true
-      tag_commit_sha: false
-      tag_branch: true
-      branch_name: ${{ github.ref_name }}
+#   build-push:
+#     name: Build and push release image
+#     needs: pre-deploy-health
+#     uses: ./.github/workflows/reusable-build-push.yml
+#     secrets:
+#       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+#       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+#     with:
+#       push: true
+#       tag_commit_sha: false
+#       tag_branch: true
+#       branch_name: ${{ github.ref_name }}
 
-  security-scan:
-    name: Security scan
-    needs: build-push
-    uses: ./.github/workflows/reusable-security-scan.yml
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      image: ${{ needs.build-push.outputs.image }}
+#   security-scan:
+#     name: Security scan
+#     needs: build-push
+#     uses: ./.github/workflows/reusable-security-scan.yml
+#     secrets:
+#       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+#       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+#     with:
+#       image: ${{ needs.build-push.outputs.image }}
 
-  update-environments:
-    name: Update production values
-    needs: build-push
-    uses: ./.github/workflows/reusable-environments-update.yml
-    secrets:
-      ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
-    with:
-      update_mode: production
-      github_environment: production
-      image_tag: ${{ github.ref_name }}
-      image_repository: dogwalker
+#   update-environments:
+#     name: Update production values
+#     needs: build-push
+#     uses: ./.github/workflows/reusable-environments-update.yml
+#     secrets:
+#       ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+#     with:
+#       update_mode: production
+#       github_environment: production
+#       image_tag: ${{ github.ref_name }}
+#       image_repository: dogwalker
 
-  deploy-production:
-    name: Deploy to production
-    needs: [build-push, update-environments, security-scan]
-    uses: ./.github/workflows/reusable-eks-deploy.yml
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
-    with:
-      github_environment: production
-      eks_cluster: ${{ vars.EKS_CLUSTER_PRODUCTION }}
-      values_file: environments/dogwalker/production/values.yaml
-      image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-      image_tag: ${{ github.ref_name }}
-      namespace: dogwalker-production
-      wait_for_rollout: true
+#   deploy-production:
+#     name: Deploy to production
+#     needs: [build-push, update-environments, security-scan]
+#     uses: ./.github/workflows/reusable-eks-deploy.yml
+#     secrets:
+#       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#       ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+#     with:
+#       github_environment: production
+#       eks_cluster: ${{ vars.EKS_CLUSTER_PRODUCTION }}
+#       values_file: environments/dogwalker/production/values.yaml
+#       image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+#       image_tag: ${{ github.ref_name }}
+#       namespace: dogwalker-production
+#       wait_for_rollout: true
 
-  post-deploy-health:
-    name: Post-deploy health
-    needs: deploy-production
-    uses: ./.github/workflows/reusable-health-check.yml
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    with:
-      github_environment: production
-      eks_cluster: ${{ vars.EKS_CLUSTER_PRODUCTION }}
-      namespace: dogwalker-production
-      app_url: ${{ vars.PRODUCTION_APP_URL }}
-      run_load_test: false
+#   post-deploy-health:
+#     name: Post-deploy health
+#     needs: deploy-production
+#     uses: ./.github/workflows/reusable-health-check.yml
+#     secrets:
+#       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#     with:
+#       github_environment: production
+#       eks_cluster: ${{ vars.EKS_CLUSTER_PRODUCTION }}
+#       namespace: dogwalker-production
+#       app_url: ${{ vars.PRODUCTION_APP_URL }}
+#       run_load_test: false

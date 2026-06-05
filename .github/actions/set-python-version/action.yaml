@@ -1,0 +1,27 @@
+name: "Python runtime setup"
+description: "Read Python version from .python-version and optionally set up Python"
+
+inputs:
+  version-file:
+    description: "Path to the Python version file"
+    required: false
+    default: ".python-version"
+
+outputs:
+  python-version:
+    description: "Python version read from the version file"
+    value: ${{ steps.read-version.outputs.python-version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Read Python version
+      id: read-version
+      shell: bash
+      run: |
+        PYTHON_VERSION="$(cat "${{ inputs.version-file }}")"
+        echo "python-version=$PYTHON_VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Display Python version
+      shell: bash
+      run: echo Python version for this project is ${{ steps.read-version.outputs.python-version }}

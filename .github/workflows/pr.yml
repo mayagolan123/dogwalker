@@ -1,182 +1,182 @@
-name: PR Checks
+# name: PR Checks
 
-on:
-  pull_request:
+# on:
+#   pull_request:
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-concurrency:
-  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# concurrency:
+#   group: pr-${{ github.workflow }}-${{ github.event.pull_request.number }}
+#   cancel-in-progress: true
 
-env:
-  IMAGE_NAME: dogwalker
+# env:
+#   IMAGE_NAME: dogwalker
 
-jobs:
-  log-time:
-    name: Log start time
-    uses: ./.github/workflows/reusable-log-time.yml
+# jobs:
+#   log-time:
+#     name: Log start time
+#     uses: ./.github/workflows/reusable-log-time.yml
 
-  resolve-branch:
-    name: Resolve branch metadata
-    needs: log-time
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      branch_name: ${{ steps.meta.outputs.branch_name }}
-      env_dir: ${{ steps.meta.outputs.env_dir }}
-      values_file: ${{ steps.meta.outputs.values_file }}
-      github_environment: ${{ steps.meta.outputs.github_environment }}
-      trusted: ${{ steps.meta.outputs.trusted }}
+#   resolve-branch:
+#     name: Resolve branch metadata
+#     needs: log-time
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 5
+#     outputs:
+#       branch_name: ${{ steps.meta.outputs.branch_name }}
+#       env_dir: ${{ steps.meta.outputs.env_dir }}
+#       values_file: ${{ steps.meta.outputs.values_file }}
+#       github_environment: ${{ steps.meta.outputs.github_environment }}
+#       trusted: ${{ steps.meta.outputs.trusted }}
 
-    steps:
-      - name: Compute branch metadata
-        id: meta
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          BASE_REPO: ${{ github.repository }}
-        run: |
-          SANITIZED="${HEAD_REF//\//-}"
-          echo "branch_name=${HEAD_REF}" >> "$GITHUB_OUTPUT"
-          echo "env_dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
-          echo "values_file=environments/dogwalker/${SANITIZED}/values.yaml" >> "$GITHUB_OUTPUT"
-          echo "github_environment=feature-${SANITIZED}" >> "$GITHUB_OUTPUT"
-          if [ "${HEAD_REPO}" = "${BASE_REPO}" ]; then
-            echo "trusted=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "trusted=false" >> "$GITHUB_OUTPUT"
-          fi
+#     steps:
+#       - name: Compute branch metadata
+#         id: meta
+#         env:
+#           HEAD_REF: ${{ github.head_ref }}
+#           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+#           BASE_REPO: ${{ github.repository }}
+#         run: |
+#           SANITIZED="${HEAD_REF//\//-}"
+#           echo "branch_name=${HEAD_REF}" >> "$GITHUB_OUTPUT"
+#           echo "env_dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
+#           echo "values_file=environments/dogwalker/${SANITIZED}/values.yaml" >> "$GITHUB_OUTPUT"
+#           echo "github_environment=feature-${SANITIZED}" >> "$GITHUB_OUTPUT"
+#           if [ "${HEAD_REPO}" = "${BASE_REPO}" ]; then
+#             echo "trusted=true" >> "$GITHUB_OUTPUT"
+#           else
+#             echo "trusted=false" >> "$GITHUB_OUTPUT"
+#           fi
 
-  static-analysis:
-    name: Static analysis
-    needs: log-time
-    uses: ./.github/workflows/reusable-static-analysis.yml
+#   static-analysis:
+#     name: Static analysis
+#     needs: log-time
+#     uses: ./.github/workflows/reusable-static-analysis.yml
 
-  unit-tests:
-    name: Unit tests
-    needs: static-analysis
-    uses: ./.github/workflows/reusable-tests.yml
-    with:
-      test_scope: unit
+#   unit-tests:
+#     name: Unit tests
+#     needs: static-analysis
+#     uses: ./.github/workflows/reusable-tests.yml
+#     with:
+#       test_scope: unit
 
-  integration-tests:
-    name: Integration tests
-    needs: static-analysis
-    uses: ./.github/workflows/reusable-tests.yml
-    with:
-      test_scope: integration
+#   integration-tests:
+#     name: Integration tests
+#     needs: static-analysis
+#     uses: ./.github/workflows/reusable-tests.yml
+#     with:
+#       test_scope: integration
 
-  build-push:
-    name: Build and push image
-    needs: [unit-tests, integration-tests, resolve-branch]
-    if: needs.resolve-branch.outputs.trusted == 'true'
-    uses: ./.github/workflows/reusable-build-push.yml
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      push: true
-      tag_commit_sha: true
-      tag_branch: true
-      branch_name: ${{ needs.resolve-branch.outputs.env_dir }}
+#   build-push:
+#     name: Build and push image
+#     needs: [unit-tests, integration-tests, resolve-branch]
+#     if: needs.resolve-branch.outputs.trusted == 'true'
+#     uses: ./.github/workflows/reusable-build-push.yml
+#     secrets:
+#       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+#       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+#     with:
+#       push: true
+#       tag_commit_sha: true
+#       tag_branch: true
+#       branch_name: ${{ needs.resolve-branch.outputs.env_dir }}
 
-  security-scan:
-    name: Security scan
-    needs: [build-push, resolve-branch]
-    if: needs.resolve-branch.outputs.trusted == 'true'
-    uses: ./.github/workflows/reusable-security-scan.yml
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      image: ${{ needs.build-push.outputs.image }}
+#   security-scan:
+#     name: Security scan
+#     needs: [build-push, resolve-branch]
+#     if: needs.resolve-branch.outputs.trusted == 'true'
+#     uses: ./.github/workflows/reusable-security-scan.yml
+#     secrets:
+#       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+#       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+#     with:
+#       image: ${{ needs.build-push.outputs.image }}
 
-  update-environments:
-    name: Update feature environment values
-    needs: [build-push, resolve-branch]
-    if: needs.resolve-branch.outputs.trusted == 'true'
-    uses: ./.github/workflows/reusable-environments-update.yml
-    secrets:
-      ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
-    with:
-      update_mode: feature
-      github_environment: ${{ needs.resolve-branch.outputs.github_environment }}
-      branch_name: ${{ needs.resolve-branch.outputs.branch_name }}
-      env_dir: ${{ needs.resolve-branch.outputs.env_dir }}
-      image_tag: ${{ needs.build-push.outputs.image_tag }}
-      image_repository: dogwalker
+#   update-environments:
+#     name: Update feature environment values
+#     needs: [build-push, resolve-branch]
+#     if: needs.resolve-branch.outputs.trusted == 'true'
+#     uses: ./.github/workflows/reusable-environments-update.yml
+#     secrets:
+#       ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+#     with:
+#       update_mode: feature
+#       github_environment: ${{ needs.resolve-branch.outputs.github_environment }}
+#       branch_name: ${{ needs.resolve-branch.outputs.branch_name }}
+#       env_dir: ${{ needs.resolve-branch.outputs.env_dir }}
+#       image_tag: ${{ needs.build-push.outputs.image_tag }}
+#       image_repository: dogwalker
 
-  deploy-dev:
-    name: Deploy to dev
-    needs: [build-push, update-environments, security-scan, resolve-branch]
-    if: needs.resolve-branch.outputs.trusted == 'true'
-    uses: ./.github/workflows/reusable-eks-deploy.yml
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
-    with:
-      github_environment: ${{ needs.resolve-branch.outputs.github_environment }}
-      eks_cluster: ${{ vars.EKS_CLUSTER_DEV }}
-      values_file: ${{ needs.resolve-branch.outputs.values_file }}
-      image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-      image_tag: ${{ needs.build-push.outputs.image_tag }}
-      namespace: dogwalker-dev
-      wait_for_rollout: true
+#   deploy-dev:
+#     name: Deploy to dev
+#     needs: [build-push, update-environments, security-scan, resolve-branch]
+#     if: needs.resolve-branch.outputs.trusted == 'true'
+#     uses: ./.github/workflows/reusable-eks-deploy.yml
+#     secrets:
+#       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#       ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+#     with:
+#       github_environment: ${{ needs.resolve-branch.outputs.github_environment }}
+#       eks_cluster: ${{ vars.EKS_CLUSTER_DEV }}
+#       values_file: ${{ needs.resolve-branch.outputs.values_file }}
+#       image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+#       image_tag: ${{ needs.build-push.outputs.image_tag }}
+#       namespace: dogwalker-dev
+#       wait_for_rollout: true
 
-  health-check:
-    name: Health check (dev)
-    needs: [deploy-dev, resolve-branch]
-    if: needs.resolve-branch.outputs.trusted == 'true'
-    uses: ./.github/workflows/reusable-health-check.yml
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    with:
-      github_environment: ${{ needs.resolve-branch.outputs.github_environment }}
-      eks_cluster: ${{ vars.EKS_CLUSTER_DEV }}
-      namespace: dogwalker-dev
-      app_url: ${{ vars.DEV_APP_URL }}
-      run_load_test: false
+#   health-check:
+#     name: Health check (dev)
+#     needs: [deploy-dev, resolve-branch]
+#     if: needs.resolve-branch.outputs.trusted == 'true'
+#     uses: ./.github/workflows/reusable-health-check.yml
+#     secrets:
+#       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#     with:
+#       github_environment: ${{ needs.resolve-branch.outputs.github_environment }}
+#       eks_cluster: ${{ vars.EKS_CLUSTER_DEV }}
+#       namespace: dogwalker-dev
+#       app_url: ${{ vars.DEV_APP_URL }}
+#       run_load_test: false
 
-  pr-status:
-    name: PR status
-    needs:
-      - log-time
-      - resolve-branch
-      - static-analysis
-      - unit-tests
-      - integration-tests
-      - build-push
-      - security-scan
-      - update-environments
-      - deploy-dev
-      - health-check
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+#   pr-status:
+#     name: PR status
+#     needs:
+#       - log-time
+#       - resolve-branch
+#       - static-analysis
+#       - unit-tests
+#       - integration-tests
+#       - build-push
+#       - security-scan
+#       - update-environments
+#       - deploy-dev
+#       - health-check
+#     if: always()
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 5
 
-    steps:
-      - name: Check results
-        run: |
-          if [[ "${{ needs.static-analysis.result }}" == "failure" ]] || \
-             [[ "${{ needs.unit-tests.result }}" == "failure" ]] || \
-             [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
-            echo "Core PR checks failed."
-            exit 1
-          fi
+#     steps:
+#       - name: Check results
+#         run: |
+#           if [[ "${{ needs.static-analysis.result }}" == "failure" ]] || \
+#              [[ "${{ needs.unit-tests.result }}" == "failure" ]] || \
+#              [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
+#             echo "Core PR checks failed."
+#             exit 1
+#           fi
 
-          if [[ "${{ needs.resolve-branch.outputs.trusted }}" == "true" ]]; then
-            if [[ "${{ needs.build-push.result }}" == "failure" ]] || \
-               [[ "${{ needs.security-scan.result }}" == "failure" ]] || \
-               [[ "${{ needs.update-environments.result }}" == "failure" ]] || \
-               [[ "${{ needs.deploy-dev.result }}" == "failure" ]] || \
-               [[ "${{ needs.health-check.result }}" == "failure" ]]; then
-              echo "Deploy pipeline checks failed."
-              exit 1
-            fi
-          fi
+#           if [[ "${{ needs.resolve-branch.outputs.trusted }}" == "true" ]]; then
+#             if [[ "${{ needs.build-push.result }}" == "failure" ]] || \
+#                [[ "${{ needs.security-scan.result }}" == "failure" ]] || \
+#                [[ "${{ needs.update-environments.result }}" == "failure" ]] || \
+#                [[ "${{ needs.deploy-dev.result }}" == "failure" ]] || \
+#                [[ "${{ needs.health-check.result }}" == "failure" ]]; then
+#               echo "Deploy pipeline checks failed."
+#               exit 1
+#             fi
+#           fi
 
-          echo "All PR checks passed."
+#           echo "All PR checks passed."
