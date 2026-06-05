@@ -141,6 +141,59 @@ Validate the chart without installing:
 helm template dogwalker ./deployment/dogwalker
 ```
 
+## CI/CD (GitHub Actions)
+
+Entry workflows are `pr.yml`, `main.yml`, and `release.yml`. Reusable jobs live in `reusable-*.yml` for static analysis, tests, image build/push, security scans, environments updates, EKS deploy, and health checks.
+
+| Workflow | Trigger | Target cluster | Environments update |
+|----------|---------|----------------|---------------------|
+| `pr.yml` | `pull_request` | **dev** EKS (feature branches) | Creates/updates `environments/dogwalker/{sanitized-branch}/values.yaml` with `targetRevision` = branch name |
+| `main.yml` | `push` to `main` | **staging** EKS | Updates `environments/dogwalker/staging/values.yaml` (`targetRevision` + `image.tag` = commit SHA) |
+| `release.yml` | `push` tag `v*.*.*` | **production** EKS | Updates `environments/dogwalker/production/values.yaml` (`targetRevision` + `image.tag` = tag) |
+
+Branch names are sanitized for Docker tags and environment directories by replacing `/` with `-` (e.g. `feature/add-this-feature` → `feature-add-this-feature`). Each feature branch maps to a GitHub environment `feature-{sanitized-branch}` (e.g. `feature-feature-add-this-feature`).
+
+### Environments repo updates
+
+The `environments/` directory is a git submodule pointing at [mayagolan123/environments](https://github.com/mayagolan123/environments). CI does **not** commit submodule pointer changes in the app repo. Instead, `reusable-environments-update.yml` checks out the environments repository with a PAT, writes the values file, and pushes directly to that repo. Deploy jobs then check out the latest environments repo before `helm upgrade`.
+
+### Required GitHub secrets
+
+| Secret | Used for |
+|--------|----------|
+| `DOCKERHUB_USERNAME` | Docker Hub login and image namespace |
+| `DOCKERHUB_TOKEN` | Docker Hub push/pull |
+| `ENVIRONMENTS_REPO_TOKEN` | Push to `mayagolan123/environments` (PAT with `contents: write`) |
+| `AWS_ACCESS_KEY_ID` | EKS `kubectl` / `helm` access |
+| `AWS_SECRET_ACCESS_KEY` | EKS access |
+
+### Required GitHub variables
+
+| Variable | Purpose |
+|----------|---------|
+| `AWS_REGION` | AWS region (default `us-east-1` in workflows if unset) |
+| `EKS_CLUSTER_DEV` | Dev cluster name (all feature envs) |
+| `EKS_CLUSTER_STAGING` | Staging cluster name |
+| `EKS_CLUSTER_PRODUCTION` | Production cluster name |
+| `ENABLE_EKS_DEPLOY` | Set to `true` to run real EKS deploys (otherwise deploy/health jobs emit a warning and skip live cluster access) |
+| `DEV_APP_URL` | Optional ingress URL for dev health checks (uses `kubectl port-forward` when empty) |
+| `STAGING_APP_URL` | Optional staging ingress URL for health + load test |
+| `PRODUCTION_APP_URL` | Optional production URL for pre/post-deploy health checks |
+
+### GitHub environments
+
+Configure GitHub environments for deployment approval gates:
+
+| Environment | Used by | Notes |
+|-------------|---------|-------|
+| `feature-{sanitized-branch}` | PR pipeline (per branch) | Auto-created on first deploy; optional reviewers per feature |
+| `staging` | `main.yml` | Environments update, deploy, and health jobs |
+| `production` | `release.yml` | Pre-deploy health, environments update, deploy, and post-deploy health |
+
+Environments-update jobs run inside the matching GitHub environment so staging/production (and feature) changes can require manual approval before values are pushed.
+
+Fork PRs run static analysis and tests only; image push, environments updates, and deploy are skipped for untrusted forks.
+
 ## Project layout
 
 ```

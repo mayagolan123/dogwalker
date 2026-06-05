@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+
+pytestmark = pytest.mark.integration
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app

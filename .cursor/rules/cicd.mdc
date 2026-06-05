@@ -1,0 +1,13 @@
+---
+description: cicd rules
+globs:
+  - ".github/workflows/**"
+alwaysApply: false
+---
+
+cicd rules:
+- Use github actions workflows for cicd.
+- Follow security standards when writing workflows. 
+- Request user approval for each workflow file created or edited, seperately.
+- Use GitHub environments to seperate production, staging and feature branches. 
+

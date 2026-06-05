@@ -1,0 +1,21 @@
+name: Reusable log time
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  log-time:
+    name: Log workflow start time
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+
+    steps:
+      - name: Log time
+        run: |
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Started at (UTC): $(date -u +'%Y-%m-%d %H:%M:%S %Z')"

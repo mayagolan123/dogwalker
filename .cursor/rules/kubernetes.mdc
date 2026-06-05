@@ -1,7 +1,7 @@
 ---
 description: Kubernetes rules for app deployment
 globs:
-  - "/deployment"
+  - "/deployment/**"
 alwaysApply: false
 ---
 
@@ -10,6 +10,7 @@ Kubernetes rules:
 - Deploy production app with high availability features.
 - Deployment must contain redinessProbe, livenessProbe, resource requests and limits.
 - Run pods without root permissions.
+- Pull images by digest only.
 
 Helm rules:
 - Avoid repeating code, use _helpers.tpl for readability.

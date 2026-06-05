@@ -1,0 +1,128 @@
+name: Reusable health check
+
+on:
+  workflow_call:
+    inputs:
+      github_environment:
+        description: GitHub environment (feature-*, staging, production)
+        required: true
+        type: string
+      eks_cluster:
+        description: EKS cluster name (for port-forward fallback)
+        required: true
+        type: string
+      namespace:
+        description: Kubernetes namespace
+        required: true
+        type: string
+      app_url:
+        description: External base URL (optional; uses port-forward when empty)
+        required: false
+        type: string
+        default: ""
+      run_load_test:
+        description: Run a lightweight load test after health checks
+        required: false
+        type: boolean
+        default: false
+      load_test_requests:
+        description: Number of requests for the load test
+        required: false
+        type: number
+        default: 50
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  health-check:
+    name: Health check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ inputs.github_environment }}
+
+    steps:
+      - name: Configure AWS credentials
+        if: vars.ENABLE_EKS_DEPLOY == 'true'
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Health and load test
+        if: vars.ENABLE_EKS_DEPLOY == 'true'
+        env:
+          APP_URL: ${{ inputs.app_url }}
+          REQUESTS: ${{ inputs.load_test_requests }}
+          RUN_LOAD: ${{ inputs.run_load_test }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${APP_URL}" ]; then
+            BASE="${APP_URL%/}"
+            curl -fsS "${BASE}/health"
+            curl -fsS "${BASE}/ready"
+            echo "Ingress health checks passed for ${BASE}"
+          else
+            aws eks update-kubeconfig --name "${{ inputs.eks_cluster }}" --region "${AWS_REGION}"
+            kubectl port-forward -n "${{ inputs.namespace }}" svc/dogwalker 18080:8000 &
+            PF_PID=$!
+            trap 'kill ${PF_PID} 2>/dev/null || true' EXIT
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:18080/health > /dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS http://127.0.0.1:18080/health
+            curl -fsS http://127.0.0.1:18080/ready
+            BASE="http://127.0.0.1:18080"
+          fi
+
+          if [ "${RUN_LOAD}" = "true" ]; then
+            export BASE
+            python3 - <<PY
+          import os
+          import statistics
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = os.environ["BASE"].rstrip("/")
+          count = int(os.environ["REQUESTS"])
+          latencies = []
+          errors = 0
+
+          for _ in range(count):
+              start = time.perf_counter()
+              try:
+                  with urllib.request.urlopen(f"{base}/health", timeout=5) as resp:
+                      if resp.status != 200:
+                          errors += 1
+              except (urllib.error.URLError, TimeoutError):
+                  errors += 1
+              latencies.append((time.perf_counter() - start) * 1000)
+
+          print(f"requests={count} errors={errors}")
+          print(f"p50_ms={statistics.median(latencies):.1f} p95_ms={sorted(latencies)[int(count * 0.95) - 1]:.1f}")
+          if errors:
+              raise SystemExit(f"load test had {errors} errors")
+          PY
+          fi
+
+      - name: Health check placeholder
+        if: vars.ENABLE_EKS_DEPLOY != 'true'
+        run: |
+          echo "::warning::Health checks skipped (ENABLE_EKS_DEPLOY is not true)."
+          echo "Set repository variable ENABLE_EKS_DEPLOY=true for live checks."
+          echo "Set app_url or enable EKS deploy for live checks."

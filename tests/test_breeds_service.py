@@ -1,6 +1,10 @@
 """Tests for breed service helpers."""
 
+import pytest
+
 from app.services.breeds import breed_info, slug_to_display_name
+
+pytestmark = pytest.mark.unit
 
 
 def test_slug_to_display_name_simple() -> None:

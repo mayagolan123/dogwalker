@@ -1,0 +1,134 @@
+name: Reusable EKS deploy
+
+on:
+  workflow_call:
+    inputs:
+      github_environment:
+        description: GitHub environment name (feature-*, staging, production)
+        required: true
+        type: string
+      eks_cluster:
+        description: EKS cluster name
+        required: true
+        type: string
+      values_file:
+        description: Path to Helm values file in this repo
+        required: true
+        type: string
+      image_repository:
+        description: Full image repository (e.g. user/dogwalker)
+        required: true
+        type: string
+      image_tag:
+        description: Image tag to deploy
+        required: true
+        type: string
+      namespace:
+        description: Kubernetes namespace
+        required: true
+        type: string
+      wait_for_rollout:
+        description: Wait for deployment rollout after helm upgrade
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      ENVIRONMENTS_REPO_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  HELM_CHART: ./deployment/dogwalker
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: ${{ inputs.github_environment }}
+
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Checkout environments repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: mayagolan123/environments
+          token: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+          path: environments
+
+      - name: Install Helm
+        uses: azure/setup-helm@511ed2945a693f779eeaf41bd54a303f1f0022c7 # v4.2.0
+        with:
+          version: v3.16.4
+
+      - name: Validate Helm chart
+        env:
+          VALUES_FILE: ${{ inputs.values_file }}
+          IMAGE_REPOSITORY: ${{ inputs.image_repository }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          helm lint ${{ env.HELM_CHART }}
+          helm template dogwalker ${{ env.HELM_CHART }} \
+            -f "${VALUES_FILE}" \
+            --set image.repository="${IMAGE_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}" \
+            > /dev/null
+
+      - name: Configure AWS credentials
+        if: vars.ENABLE_EKS_DEPLOY == 'true'
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Helm upgrade
+        if: vars.ENABLE_EKS_DEPLOY == 'true'
+        env:
+          EKS_CLUSTER: ${{ inputs.eks_cluster }}
+          VALUES_FILE: ${{ inputs.values_file }}
+          IMAGE_REPOSITORY: ${{ inputs.image_repository }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          NAMESPACE: ${{ inputs.namespace }}
+        run: |
+          aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}"
+          helm upgrade --install dogwalker ${{ env.HELM_CHART }} \
+            -f "${VALUES_FILE}" \
+            --set image.repository="${IMAGE_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --namespace "${NAMESPACE}" \
+            --create-namespace \
+            --wait \
+            --timeout 10m
+
+      - name: Wait for rollout
+        if: vars.ENABLE_EKS_DEPLOY == 'true' && inputs.wait_for_rollout
+        env:
+          EKS_CLUSTER: ${{ inputs.eks_cluster }}
+          NAMESPACE: ${{ inputs.namespace }}
+        run: |
+          aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}"
+          kubectl rollout status deployment/dogwalker \
+            -n "${NAMESPACE}" \
+            --timeout=10m
+
+      - name: Deploy placeholder
+        if: vars.ENABLE_EKS_DEPLOY != 'true'
+        run: |
+          echo "::warning::EKS deploy skipped (ENABLE_EKS_DEPLOY is not true)."
+          echo "Set repository variable ENABLE_EKS_DEPLOY=true for live deploys."
+          echo "GitHub environment: ${{ inputs.github_environment }}"
+          echo "Cluster: ${{ inputs.eks_cluster }}"
+          echo "Values file: ${{ inputs.values_file }}"
+          echo "Image: ${{ inputs.image_repository }}:${{ inputs.image_tag }}"
+          echo "Namespace: ${{ inputs.namespace }}"

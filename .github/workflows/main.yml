@@ -1,0 +1,140 @@
+name: Main branch CD
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: dogwalker
+
+jobs:
+  log-time:
+    name: Log start time
+    uses: ./.github/workflows/reusable-log-time.yml
+
+  static-analysis:
+    name: Static analysis
+    needs: log-time
+    uses: ./.github/workflows/reusable-static-analysis.yml
+
+  unit-tests:
+    name: Unit tests
+    needs: static-analysis
+    uses: ./.github/workflows/reusable-tests.yml
+    with:
+      test_scope: unit
+
+  integration-tests:
+    name: Integration tests
+    needs: static-analysis
+    uses: ./.github/workflows/reusable-tests.yml
+    with:
+      test_scope: integration
+
+  build-push:
+    name: Build and push image
+    needs: [unit-tests, integration-tests]
+    uses: ./.github/workflows/reusable-build-push.yml
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    with:
+      push: true
+      tag_commit_sha: true
+      tag_branch: false
+
+  security-scan:
+    name: Security scan
+    needs: build-push
+    uses: ./.github/workflows/reusable-security-scan.yml
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    with:
+      image: ${{ needs.build-push.outputs.image }}
+
+  update-environments:
+    name: Update staging values
+    needs: build-push
+    uses: ./.github/workflows/reusable-environments-update.yml
+    secrets:
+      ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+    with:
+      update_mode: staging
+      github_environment: staging
+      branch_name: ${{ github.sha }}
+      image_tag: ${{ needs.build-push.outputs.image_tag }}
+      image_repository: dogwalker
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: [build-push, update-environments, security-scan]
+    uses: ./.github/workflows/reusable-eks-deploy.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ENVIRONMENTS_REPO_TOKEN: ${{ secrets.ENVIRONMENTS_REPO_TOKEN }}
+    with:
+      github_environment: staging
+      eks_cluster: ${{ vars.EKS_CLUSTER_STAGING }}
+      values_file: environments/dogwalker/staging/values.yaml
+      image_repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+      image_tag: ${{ needs.build-push.outputs.image_tag }}
+      namespace: dogwalker-staging
+      wait_for_rollout: true
+
+  health-check:
+    name: Health and performance (staging)
+    needs: deploy-staging
+    uses: ./.github/workflows/reusable-health-check.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    with:
+      github_environment: staging
+      eks_cluster: ${{ vars.EKS_CLUSTER_STAGING }}
+      namespace: dogwalker-staging
+      app_url: ${{ vars.STAGING_APP_URL }}
+      run_load_test: true
+      load_test_requests: 50
+
+  main-status:
+    name: Main status
+    needs:
+      - log-time
+      - static-analysis
+      - unit-tests
+      - integration-tests
+      - build-push
+      - security-scan
+      - update-environments
+      - deploy-staging
+      - health-check
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check results
+        run: |
+          if [[ "${{ needs.static-analysis.result }}" == "failure" ]] || \
+             [[ "${{ needs.unit-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.integration-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-push.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-scan.result }}" == "failure" ]] || \
+             [[ "${{ needs.update-environments.result }}" == "failure" ]] || \
+             [[ "${{ needs.deploy-staging.result }}" == "failure" ]] || \
+             [[ "${{ needs.health-check.result }}" == "failure" ]]; then
+            echo "Main branch pipeline failed."
+            exit 1
+          fi
+
+          echo "All main branch checks passed."

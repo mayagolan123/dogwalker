@@ -1,0 +1,18 @@
+extends: default
+
+rules:
+  line-length:
+    max: 140
+  document-start: disable
+  truthy:
+    allowed-values: ["true", "false", "on", "off"]
+  new-lines:
+    type: platform
+  comments:
+    min-spaces-from-content: 1
+
+ignore: |
+  .venv/
+  .cursor/
+  cc-devops-skills/
+  deployment/dogwalker/templates/

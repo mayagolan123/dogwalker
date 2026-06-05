@@ -1,0 +1,121 @@
+name: Reusable build and push
+
+on:
+  workflow_call:
+    inputs:
+      push:
+        description: Push image to Docker Hub
+        required: false
+        type: boolean
+        default: true
+      tag_commit_sha:
+        description: Tag image with commit SHA
+        required: false
+        type: boolean
+        default: true
+      tag_branch:
+        description: Tag image with sanitized branch name
+        required: false
+        type: boolean
+        default: false
+      branch_name:
+        description: Branch name for docker tag (sanitized by caller)
+        required: false
+        type: string
+        default: ""
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+    outputs:
+      image:
+        description: Primary image reference
+        value: ${{ jobs.build-push.outputs.image }}
+      image_tag:
+        description: Primary image tag
+        value: ${{ jobs.build-push.outputs.image_tag }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: dogwalker
+
+jobs:
+  build-push:
+    name: Build and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      image_tag: ${{ steps.image.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
+
+      - name: Log in to Docker Hub
+        if: inputs.push
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set image tags
+        id: meta
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          TAG_COMMIT_SHA: ${{ inputs.tag_commit_sha }}
+          TAG_BRANCH: ${{ inputs.tag_branch }}
+        run: |
+          TAGS=()
+          PRIMARY_TAG=""
+
+          if [ "${TAG_COMMIT_SHA}" = "true" ]; then
+            TAGS+=("${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${GITHUB_SHA}")
+            PRIMARY_TAG="${GITHUB_SHA}"
+          fi
+
+          if [ "${TAG_BRANCH}" = "true" ] && [ -n "${BRANCH_NAME}" ]; then
+            if [[ ! "${BRANCH_NAME}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+              echo "::error::Invalid branch name for docker tag"
+              exit 1
+            fi
+            TAGS+=("${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${BRANCH_NAME}")
+            if [ -z "${PRIMARY_TAG}" ]; then
+              PRIMARY_TAG="${BRANCH_NAME}"
+            fi
+          fi
+
+          if [ ${#TAGS[@]} -eq 0 ]; then
+            TAGS+=("${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${GITHUB_SHA}")
+            PRIMARY_TAG="${GITHUB_SHA}"
+          fi
+
+          {
+            echo "tags<<EOF"
+            printf '%s\n' "${TAGS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "primary_tag=${PRIMARY_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        with:
+          context: .
+          push: ${{ inputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set image reference
+        id: image
+        run: |
+          echo "image=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.primary_tag }}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${{ steps.meta.outputs.primary_tag }}" >> "$GITHUB_OUTPUT"
