@@ -7,6 +7,8 @@ jobs:
   tests:
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout:latest 
+  
       - name: Setup python version
         uses: ./.github/actions/set-python-version
           
